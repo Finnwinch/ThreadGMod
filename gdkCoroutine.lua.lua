@@ -3,16 +3,14 @@ FilsTraitement.__index = FilsTraitement
 
 FilsTraitement.instance = nil
 FilsTraitement.executions = {}
-FilsTraitement.running = true
+FilsTraitement.timerID = "CoroutineUpdateTimer"
 
 function FilsTraitement.new(RATIO)
     if FilsTraitement.instance == nil then
         local self = setmetatable({}, FilsTraitement)
         FilsTraitement.instance = self
     end
-    timer.Create("CoroutineUpdateTimer", RATIO, 0, function()   // mayby change in next update by handler
-        FilsTraitement.instance:update()
-    end)
+    FilsTraitement.instance.RATIO = RATIO
     return FilsTraitement.instance
 end
 
@@ -31,6 +29,12 @@ function FilsTraitement:startTraitement(delaySeconds, traitement, nomExecution)
 
     local co = coroutine.create(coroutineFunction)
     self.executions[nomExecution] = { co = co, delay = delaySeconds }
+
+    if next(self.executions) then
+        timer.Create(self.timerID, self.RATIO, 0, function()
+            self:update()
+        end)
+    end
 end
 
 function FilsTraitement:update()
@@ -43,12 +47,20 @@ function FilsTraitement:update()
             self:stopTraitement(nomExecution)
         end
     end
+
+    if not next(self.executions) then
+        timer.Remove(self.timerID)
+    end
 end
 
 function FilsTraitement:stopTraitement(nomExecution)
     if self.executions[nomExecution] then
         self.executions[nomExecution] = nil
         print("Coroutine '" .. nomExecution .. "' has been stopped.")
+        
+        if not next(self.executions) then
+            timer.Remove(self.timerID)
+        end
     else
         print("Coroutine '" .. nomExecution .. "' is not running.")
     end
